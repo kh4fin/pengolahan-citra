@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Converter (Grayscale, Binary, Indexed)</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      canvas {
+        border: 1px solid #ccc;
+        margin-right: 20px;
+      }
+      #controls {
+        margin-bottom: 15px;
+      }
+      button {
+        margin-right: 10px;
+        padding: 8px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Image Converter</h1>
+    <div id="controls">
+      <input type="file" id="fileInput" accept="image/*" />
+      <button id="btnGray">Grayscale</button>
+      <button id="btnBinary">Binary</button>
+      <button id="btnIndexed">Indexed</button>
+    </div>
+    <div>
+      <canvas id="original" width="300" height="300"></canvas>
+      <canvas id="processed" width="300" height="300"></canvas>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const canvasOrg = document.getElementById("original");
+      const canvasProc = document.getElementById("processed");
+      const ctxOrg = canvasOrg.getContext("2d");
+      const ctxProc = canvasProc.getContext("2d");
+
+      let imgWidth, imgHeight;
+
+      // Load selected image onto original canvas
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          const img = new Image();
+          img.onload = function () {
+            imgWidth = img.width;
+            imgHeight = img.height;
+            canvasOrg.width = imgWidth;
+            canvasOrg.height = imgHeight;
+            canvasProc.width = imgWidth;
+            canvasProc.height = imgHeight;
+            ctxOrg.drawImage(img, 0, 0);
+            ctxProc.clearRect(0, 0, imgWidth, imgHeight);
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById("btnGray").addEventListener("click", () => {
+        const imgData = ctxOrg.getImageData(0, 0, imgWidth, imgHeight);
+        const data = imgData.data;
+        // console.log(data);
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const gray = Math.floor(0.299 * r + 0.587 * g + 0.114 * b);
+          data[i] = data[i + 1] = data[i + 2] = gray;
+        }
+        ctxProc.putImageData(imgData, 0, 0);
+      });
+
+      document.getElementById("btnBinary").addEventListener("click", () => {
+        const imgData = ctxOrg.getImageData(0, 0, imgWidth, imgHeight);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const gray = Math.floor(0.299 * r + 0.587 * g + 0.114 * b);
+          const val = gray >= 128 ? 255 : 0;
+          data[i] = data[i + 1] = data[i + 2] = val;
+        }
+        ctxProc.putImageData(imgData, 0, 0);
+      });
+
+      document.getElementById("btnIndexed").addEventListener("click", () => {
+        const palette = [
+          [0, 0, 0], // black
+          [255, 0, 0], // red
+          [0, 255, 0], // green
+          [0, 0, 255], // blue
+          [255, 255, 0], // yellow
+          [255, 0, 255], // magenta
+          [0, 255, 255], // cyan
+          [255, 255, 255], // white
+        ];
+
+        const imgData = ctxOrg.getImageData(0, 0, imgWidth, imgHeight);
+        const data = imgData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          let bestIndex = 0;
+          let bestDist = Infinity;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          for (let p = 0; p < palette.length; p++) {
+            const pr = palette[p][0];
+            const pg = palette[p][1];
+            const pb = palette[p][2];
+            const dist =
+              (r - pr) * (r - pr) + (g - pg) * (g - pg) + (b - pb) * (b - pb);
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIndex = p;
+            }
+          }
+          data[i] = palette[bestIndex][0];
+          data[i + 1] = palette[bestIndex][1];
+          data[i + 2] = palette[bestIndex][2];
+        }
+        ctxProc.putImageData(imgData, 0, 0);
+      });
+    </script>
+  </body>
+</html>
